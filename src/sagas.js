@@ -2,7 +2,7 @@
 
 import { put, select, call, take, cancelled, fork } from 'redux-saga/effects';
 import { eventChannel } from 'redux-saga';
-import { NetInfo } from 'react-native';
+import { NetInfo, AppState } from 'react-native';
 import checkInternetAccess from './checkInternetAccess';
 import { connectionChange } from './actionCreators';
 import type { NetworkState } from './types';
@@ -105,12 +105,20 @@ function* checkInternetAccessSaga(
   timeout?: number,
   pingServerUrl?: string,
 ): Generator<*, *, *> {
-  const hasInternetAccess = yield call(
-    checkInternetAccess,
-    timeout,
-    pingServerUrl,
-  );
-  yield call(handleConnectivityChange, hasInternetAccess);
+
+  const isAlreadyConnected = yield select((state) => state.network.isConnected)
+
+  // if connection is fine or application runs in background, we do not ping external service
+  if (isAlreadyConnected || AppState.currentState !== 'active') {
+    yield call(handleConnectivityChange, isAlreadyConnected);
+  } else {
+    const hasInternetAccess = yield call(
+      checkInternetAccess,
+      timeout,
+      pingServerUrl,
+    );
+    yield call(handleConnectivityChange, hasInternetAccess);
+  }
 }
 
 /**
